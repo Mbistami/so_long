@@ -68,7 +68,7 @@ void save_game_data (char c, t_game_data *data, int col, int lines)
                 data->player = lines * (data->min_line_len + 1) + col;
             printf("player pos :%d\n", data->player);
         }
-        else if ((c != '0' && c != '1') && c != 10) // replace 13 && 10 with 13 (NEW LINE WINDOWS/MAC)
+        else if ((c != '0' && c != '1') && (c != 10 && c != 'X')) // replace 13 && 10 with 13 (NEW LINE WINDOWS/MAC)
             data->error = 1;
     }
     else if (c == 'C')
@@ -149,6 +149,8 @@ int get_color (char type)
         return 0xD5F12C;
     else if (type == 'E')
         return 0x3EF568;
+    else if (type == 'X')
+        return 0xD42FE4;
     else
         return 0x00000;
 }
@@ -190,11 +192,12 @@ void draw_map (char *map, t_data *img, t_game_data *data)
     int i = 0;
     int square_size = data->square_size;
     t_point point; 
-    // my_mlx_pixel_put(img, 5, 5, 0x00FF0000);
-    // printf("%i", square_size);
     new_point(x, y, &point);
+    printf("%s\n", data->map);
     while(map[i])
     {
+        if ((i != 0 && map[i - 1] == 'E') && map[i] == '0')
+            data->map[i] = 'X';
         if (map[i] != 10)
             draw_square(&point, img, data, map[i]);
         if (map[i] != 10)
@@ -207,6 +210,7 @@ void draw_map (char *map, t_data *img, t_game_data *data)
         new_point(x, y, &point);
         i++;
     }
+    printf("%s\n", data->map);
 }
 
 void make_moves(t_game_data *data, int keycode)
@@ -252,7 +256,7 @@ void update_game_data (t_game_data *data)
             data->exit_count++;
         i++;
     }
-    if (data->exit_count == 0)
+    if (data->exit_count == 0 && !data->collectible_count)
         mlx_string_put(data->vars.mlx, data->vars.win, 1200 / 2, (data->square_size * data->lines_count) / 2, 0x556E86, "YOU WON!");
 }
 
@@ -278,10 +282,10 @@ int main(void)
     init_game_data(&data);
     fd = open("./file", O_RDONLY);
     if (!parse_map(&data, fd) || (((!data.min_line_len || !data.exit_count) || (!data.starting_pos_count || !data.collectible_count)) || data.error == 1))
-        {
-            printf("ERROR ON MAP PARSING");
-            return 0;
-        }
+    {
+        printf("ERROR ON MAP PARSING");
+        return 0;
+    }
     else
         printf("Map width: %d exits: %d collectibles: %d starting position: %d lines: %d", data.min_line_len, data.exit_count, data.collectible_count, data.starting_pos_count, data.lines_count);
     printf("\n%s\n%d", data.map, 1080 / data.min_line_len);
@@ -298,7 +302,6 @@ int main(void)
     data.img = img;
     data.vars = vars;
 	mlx_put_image_to_window(vars.mlx, vars.win, img.img, 0, 0);
-    printf("%c\n", data.map[43]);
     mlx_hook(vars.win, 2, 0, key_hook, &data);
     mlx_loop(vars.mlx);
 }
